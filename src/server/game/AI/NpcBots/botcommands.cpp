@@ -1636,19 +1636,6 @@ public:
             if (!bot || !gr->IsMember(itr->second->GetGUID()))
                 continue;
 
-            //for (uint8 i = BOT_SLOT_MAINHAND; i != BOT_INVENTORY_SIZE; ++i)
-            //{
-            //    Item const* item = _equips[i];
-            //    if (!item) continue;
-            //    std::ostringstream msg;
-            //    _AddItemLink(player, item, msg/*, false*/);
-            //    //uncomment if needed
-            //    //msg << " in slot " << uint32(i) << " (" << _getNameForSlot(i + 1) << ')';
-            //    if (i <= BOT_SLOT_RANGED && einfo->ItemEntry[i] == item->GetEntry())
-            //        msg << " |cffe6cc80|h[!" << LocalizedNpcText(player, BOT_TEXT_VISUALONLY) << "!]|h|r";
-            //    BotWhisper(msg.str(), player);
-            //}
-
             for (uint8 i = BOT_SLOT_MAINHAND; i != BOT_INVENTORY_SIZE; ++i)
                 if (bot->GetBotAI()->CanEquip(item->GetTemplate(), i, true, item))
                 {
@@ -1663,14 +1650,13 @@ public:
                         if (gs > currGs)
                         {
                             msg << "+" << (gs - currGs) << " GearScore -> ";
-                            bot->GetBotAI()->AddItemLink(player, item, msg);
+                            bot->GetBotAI()->AddItemLink(player, currItem, msg);
                             bot->GetBotAI()->BotWhisper(msg.str(), player);
                         }
                     }
                     else
                     {
-                        msg << "+" << gs << " GearScore -> ";
-                        bot->GetBotAI()->AddItemLink(player, item, msg);
+                        msg << "+" << gs << " GearScore -> Nothing Equipped!";
                         bot->GetBotAI()->BotWhisper(msg.str(), player);
                     }
                 }
