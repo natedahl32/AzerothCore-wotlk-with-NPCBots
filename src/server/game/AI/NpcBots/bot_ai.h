@@ -244,6 +244,7 @@ class bot_ai : public CreatureAI
         bool CanDisplayNonWeaponEquipmentChanges() const;
         bool IsValidTransmog(uint8 slot, ItemTemplate const* source) const;
         bool CanChangeEquip(uint8 slot) const;
+        bool CanEquip(ItemTemplate const* newProto, uint8 slot, bool ignoreItemLevel, Item const* newItem = nullptr) const;
         virtual bool CanSeeEveryone() const { return false; }
         virtual float GetBotArmorPenetrationCoef() const { return armor_pen; }
         virtual uint32 GetAIMiscValue(uint32 /*data*/) const { return 0; }
@@ -342,6 +343,15 @@ class bot_ai : public CreatureAI
         void SetContestedPvP();
         void ResetContestedPvP();
         void UpdateContestedPvP();
+
+        void BotSay(const std::string& text, Player const* target = nullptr) const;
+        void BotWhisper(const std::string& text, Player const* target = nullptr) const;
+        void BotYell(const std::string& text, Player const* target = nullptr) const;
+        void BotSay(std::string&& text, Player const* target = nullptr) const;
+        void BotWhisper(std::string&& text, Player const* target = nullptr) const;
+        void BotYell(std::string&& text, Player const* target = nullptr) const;
+
+        void AddItemLink(Player const* forPlayer, Item const* item, std::ostringstream& str, bool addIcon = true) const;
 
         static bool IsFlagCarrier(Unit const* unit, BattlegroundTypeId bgTypeId = BATTLEGROUND_TYPE_NONE);
 
@@ -502,13 +512,6 @@ class bot_ai : public CreatureAI
         //event helpers
         void BotJumpInPlaceInFrontOf(Position const* pos, float speedXY, float maxHeight);
         void DismountBot();
-
-        void BotSay(const std::string &text, Player const* target = nullptr) const;
-        void BotWhisper(const std::string &text, Player const* target = nullptr) const;
-        void BotYell(const std::string &text, Player const* target = nullptr) const;
-        void BotSay(std::string&& text, Player const* target = nullptr) const;
-        void BotWhisper(std::string&& text, Player const* target = nullptr) const;
-        void BotYell(std::string&& text, Player const* target = nullptr) const;
 
         void ReportSpellCast(uint32 spellId, const std::string& followedByString, Player const* target) const;
 

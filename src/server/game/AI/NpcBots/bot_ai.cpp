@@ -11559,6 +11559,11 @@ bool bot_ai::_canUseRelic() const
         _botclass == BOT_CLASS_DRUID || _botclass == BOT_CLASS_DEATH_KNIGHT);
 }
 
+bool bot_ai::CanEquip(ItemTemplate const* newProto, uint8 slot, bool ignoreItemLevel, Item const* newItem) const
+{
+    return _canEquip(newProto, slot, ignoreItemLevel, newItem);
+}
+
 bool bot_ai::_canEquip(ItemTemplate const* newProto, uint8 slot, bool ignoreItemLevel, Item const* newItem) const
 {
     EquipmentInfo const* einfo = BotDataMgr::GetBotEquipmentInfo(me->GetEntry());
@@ -14953,6 +14958,10 @@ void bot_ai::_AddItemTemplateLink(Player const* forPlayer, ItemTemplate const* i
         str<< "|cff009900x" << item->BuyCount << ".|r";
     else
         str << "|cff009900.|r";
+}
+void bot_ai::AddItemLink(Player const* forPlayer, Item const* item, std::ostringstream& str, bool addIcon) const
+{
+    _AddItemLink(forPlayer, item, str, addIcon);
 }
 // |TInterface\\Icons\\INV_<iconName>:<iconSize>|t|color|Hitem:item_id:perm_ench_id:gem1:gem2:gem3:0:random_property:suffix_factor:reporter_level|h[name]|h|r
 // |TInterface\\Icons\\INV_Misc_Staff_01:16|t|cffa335ee|Hitem:812:0:0:0:0:0:0:0:70|h[Glowing Brightwood Staff]|h|r

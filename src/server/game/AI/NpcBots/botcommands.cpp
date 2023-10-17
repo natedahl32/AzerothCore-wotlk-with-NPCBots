@@ -670,6 +670,7 @@ public:
             { "suicide",    HandleNpcBotKillCommand,                rbac::RBAC_PERM_COMMAND_NPCBOT_KILL,               Console::No  },
             { "go",         HandleNpcBotGoCommand,                  rbac::RBAC_PERM_COMMAND_NPCBOT_MOVE,               Console::No  },
             { "gs",         HandleNpcBotGearScoreCommand,           rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
+            { "gearcheck",  HandleNpcBotGearCheckCommand,           rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
             { "sendto",     npcbotSendToCommandTable                                                                                },
             { "distance",   npcbotDistanceCommandTable                                                                              },
             { "order",      npcbotOrderCommandTable                                                                                 },
@@ -1551,6 +1552,116 @@ public:
 
         handler->SendSysMessage(sstr.str().c_str());
         delete[] subBots;
+        return true;
+    }
+
+    static bool HandleNpcBotGearCheckCommand(ChatHandler* handler, Optional<Variant<ItemTemplate const*, std::vector<std::string>>> item_name_parts_or_template)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        Group const* gr = player->GetGroup();
+        
+        if (!item_name_parts_or_template)
+        {
+            handler->SendSysMessage(".npcbot gearcheck [#item_name]");
+            handler->SendSysMessage("Checks if bot can equip item and tells owner if it is an upgrade");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        // Get the item, either from the item link or by name
+        Item* item = nullptr;
+        if (item_name_parts_or_template->holds_alternative<ItemTemplate const*>())
+            item = player->GetItemByEntry(item_name_parts_or_template->get<ItemTemplate const*>()->ItemId);
+        else
+        {
+            auto const& vec = item_name_parts_or_template->get<std::vector<std::string>>();
+            std::string itemname = vec[0];
+            for (std::size_t i = 1; i < vec.size(); ++i)
+                itemname += ' ' + vec[i];
+
+            if (itemname.size() >= 2 && itemname[0] == '[' && itemname[itemname.size() - 1] == ']')
+                itemname = itemname.substr(1, itemname.size() - 2);
+
+            LocaleConstant locale = handler->GetSession()->GetSessionDbcLocale();
+
+            // find the item
+            for (uint8 i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END && !item; ++i)
+            {
+                Item* pItem = player->GetItemByPos(INVENTORY_SLOT_BAG_0, i);
+                if (!pItem || pItem->IsInTrade())
+                    continue;
+
+                ItemTemplate const* pItemTemplate = pItem->GetTemplate();
+                std::string pItemName = pItemTemplate->Name1;
+                if (ItemLocale const* il = sObjectMgr->GetItemLocale(pItemTemplate->ItemId))
+                    ObjectMgr::GetLocaleString(il->Name, locale, pItemName);
+                if (pItemName == itemname)
+                    item = pItem;
+            }
+            for (uint8 i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END && !item; ++i)
+            {
+                if (Bag* pBag = player->GetBagByPos(i))
+                {
+                    for (uint32 j = 0; j < pBag->GetBagSize() && !item; ++j)
+                    {
+                        Item* pItem = player->GetItemByPos(i, j);
+                        if (!pItem || pItem->IsInTrade())
+                            continue;
+
+                        ItemTemplate const* pItemTemplate = pItem->GetTemplate();
+                        std::string pItemName = pItemTemplate->Name1;
+                        if (ItemLocale const* il = sObjectMgr->GetItemLocale(pItemTemplate->ItemId))
+                            ObjectMgr::GetLocaleString(il->Name, locale, pItemName);
+                        if (pItemName == itemname)
+                            item = pItem;
+                    }
+                }
+            }
+        }
+
+        if (!item)
+        {
+            handler->SendSysMessage(LANG_COMMAND_NOITEMFOUND);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        ItemTemplate const* itemtemplate = item->GetTemplate();
+
+        // Iterate over all bots and check if they can use the gear
+        BotMap const* map = player->GetBotMgr()->GetBotMap();
+        for (BotMap::const_iterator itr = map->begin(); itr != map->end(); ++itr)
+        {
+            Creature* bot = itr->second;
+            if (!bot || !gr->IsMember(itr->second->GetGUID()))
+                continue;
+
+            //for (uint8 i = BOT_SLOT_MAINHAND; i != BOT_INVENTORY_SIZE; ++i)
+            //{
+            //    Item const* item = _equips[i];
+            //    if (!item) continue;
+            //    std::ostringstream msg;
+            //    _AddItemLink(player, item, msg/*, false*/);
+            //    //uncomment if needed
+            //    //msg << " in slot " << uint32(i) << " (" << _getNameForSlot(i + 1) << ')';
+            //    if (i <= BOT_SLOT_RANGED && einfo->ItemEntry[i] == item->GetEntry())
+            //        msg << " |cffe6cc80|h[!" << LocalizedNpcText(player, BOT_TEXT_VISUALONLY) << "!]|h|r";
+            //    BotWhisper(msg.str(), player);
+            //}
+
+            for (uint8 i = BOT_SLOT_MAINHAND; i != BOT_INVENTORY_SIZE; ++i)
+                if (bot->GetBotAI()->CanEquip(item->GetTemplate(), i, true, item))  // This also checks the gear stat score
+                {
+                    std::ostringstream msg;
+                    bot->GetBotAI()->AddItemLink(player, item, msg);
+                    bot->GetBotAI()->BotWhisper(msg.str(), player);
+                }
+            // 1) Can the bot equip the piece of gear?
+            //      How do bots know they can equip gear in my bags?
+            // 2) If they can, is it an upgrade? (ie. gearscore is greater than current)
+            // 3) If it is an upgrade, bot should send a link with their current item and gearscore difference (upgrade amount)
+        }
+
         return true;
     }
 
