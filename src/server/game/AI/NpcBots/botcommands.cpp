@@ -1650,11 +1650,29 @@ public:
             //}
 
             for (uint8 i = BOT_SLOT_MAINHAND; i != BOT_INVENTORY_SIZE; ++i)
-                if (bot->GetBotAI()->CanEquip(item->GetTemplate(), i, true, item))  // This also checks the gear stat score
+                if (bot->GetBotAI()->CanEquip(item->GetTemplate(), i, true, item))
                 {
                     std::ostringstream msg;
-                    bot->GetBotAI()->AddItemLink(player, item, msg);
-                    bot->GetBotAI()->BotWhisper(msg.str(), player);
+                    float gs = bot->GetBotAI()->CalculateGearScoreForItem(i, itemtemplate);
+
+                    // Get currently equipped item (if any)
+                    if (Item const* currItem = bot->GetBotAI()->GetEquips(i))
+                    {
+                        // We have a currently equipped item
+                        float currGs = bot->GetBotAI()->CalculateGearScoreForItem(i, currItem->GetTemplate());
+                        if (gs > currGs)
+                        {
+                            msg << "+" << (gs - currGs) << " GearScore -> ";
+                            bot->GetBotAI()->AddItemLink(player, item, msg);
+                            bot->GetBotAI()->BotWhisper(msg.str(), player);
+                        }
+                    }
+                    else
+                    {
+                        msg << "+" << gs << " GearScore -> ";
+                        bot->GetBotAI()->AddItemLink(player, item, msg);
+                        bot->GetBotAI()->BotWhisper(msg.str(), player);
+                    }
                 }
             // 1) Can the bot equip the piece of gear?
             //      How do bots know they can equip gear in my bags?

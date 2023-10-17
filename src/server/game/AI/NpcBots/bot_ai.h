@@ -352,6 +352,7 @@ class bot_ai : public CreatureAI
         void BotYell(std::string&& text, Player const* target = nullptr) const;
 
         void AddItemLink(Player const* forPlayer, Item const* item, std::ostringstream& str, bool addIcon = true) const;
+        float CalculateGearScoreForItem(uint8 slot, ItemTemplate const* proto);
 
         static bool IsFlagCarrier(Unit const* unit, BattlegroundTypeId bgTypeId = BATTLEGROUND_TYPE_NONE);
 

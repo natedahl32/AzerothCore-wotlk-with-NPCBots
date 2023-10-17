@@ -19406,6 +19406,10 @@ bool bot_ai::CanDisplayNonWeaponEquipmentChanges() const
 {
     return (_botclass < BOT_CLASS_EX_START || _botclass == BOT_CLASS_ARCHMAGE);
 }
+float bot_ai::CalculateGearScoreForItem(uint8 slot, ItemTemplate const* proto)
+{
+    return CalculateItemGearScore(me->GetEntry(), me->GetLevel(), GetBotClass(), GetSpec(), slot, proto);
+}
 bool bot_ai::IsValidTransmog(uint8 slot, ItemTemplate const* source) const
 {
     ASSERT(slot < BOT_TRANSMOG_INVENTORY_SIZE);
