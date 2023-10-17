@@ -1646,12 +1646,36 @@ public:
                     if (Item const* currItem = bot->GetBotAI()->GetEquips(i))
                     {
                         // We have a currently equipped item
-                        float currGs = bot->GetBotAI()->CalculateGearScoreForItem(i, currItem->GetTemplate());
-                        if (gs > currGs)
+
+                        // If the item we are looking at is a two handed weapon, we need to get the GS for both our MH and OH to check against
+                        if (itemtemplate->Class == ITEM_CLASS_WEAPON && itemtemplate->InventoryType == INVTYPE_2HWEAPON)
                         {
-                            msg << "+" << (gs - currGs) << " GearScore -> ";
-                            bot->GetBotAI()->AddItemLink(player, currItem, msg);
-                            bot->GetBotAI()->BotWhisper(msg.str(), player);
+                            Item const* ohItem = bot->GetBotAI()->GetEquips(i+1);
+                            float mhGs = bot->GetBotAI()->CalculateGearScoreForItem(i, currItem->GetTemplate());
+                            float ohGs = ohItem ? bot->GetBotAI()->CalculateGearScoreForItem(i+1, currItem->GetTemplate()) : 0;
+                            if (gs > (mhGs + ohGs))
+                            {
+                                msg << "+" << (gs - (mhGs + ohGs)) << " GearScore -> ";
+                                if (ohItem)
+                                {
+                                    bot->GetBotAI()->AddItemLink(player, currItem, msg);
+                                    msg << " / ";
+                                    bot->GetBotAI()->AddItemLink(player, ohItem, msg);
+                                }
+                                else
+                                    bot->GetBotAI()->AddItemLink(player, currItem, msg);
+                                bot->GetBotAI()->BotWhisper(msg.str(), player);
+                            }
+                        }
+                        else
+                        {
+                            float currGs = bot->GetBotAI()->CalculateGearScoreForItem(i, currItem->GetTemplate());
+                            if (gs > currGs)
+                            {
+                                msg << "+" << (gs - currGs) << " GearScore -> ";
+                                bot->GetBotAI()->AddItemLink(player, currItem, msg);
+                                bot->GetBotAI()->BotWhisper(msg.str(), player);
+                            }
                         }
                     }
                     else
@@ -1660,10 +1684,6 @@ public:
                         bot->GetBotAI()->BotWhisper(msg.str(), player);
                     }
                 }
-            // 1) Can the bot equip the piece of gear?
-            //      How do bots know they can equip gear in my bags?
-            // 2) If they can, is it an upgrade? (ie. gearscore is greater than current)
-            // 3) If it is an upgrade, bot should send a link with their current item and gearscore difference (upgrade amount)
         }
 
         return true;
