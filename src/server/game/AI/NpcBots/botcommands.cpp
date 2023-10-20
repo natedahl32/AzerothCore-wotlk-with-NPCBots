@@ -566,7 +566,9 @@ public:
             { "walk",       HandleNpcBotCommandWalkCommand,         rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
             { "nogossip",   HandleNpcBotCommandNoGossipCommand,     rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
             { "unbind",     HandleNpcBotCommandUnBindCommand,       rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
+            { "unbindall",  HandleNpcBotCommandUnBindAllCommand,    rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
             { "rebind",     HandleNpcBotCommandReBindCommand,       rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
+            { "rebindall",  HandleNpcBotCommandReBindAllCommand,    rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
             { "nocast",     HandleNpcBotCommandNoCastCommand,       rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
             { "nolongcast", HandleNpcBotCommandNoLongCastCommand,   rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
         };
@@ -4110,6 +4112,56 @@ public:
         return return_success(handler, { count });
     }
 
+    static bool HandleNpcBotCommandReBindAllCommand(ChatHandler* handler)
+    {
+        static auto return_syntax = [](ChatHandler* chandler) -> bool {
+            chandler->SendSysMessage(".npcbot command rebindall");
+            chandler->SendSysMessage("Re-binds all unbound npcbot");
+            chandler->SetSentErrorMessage(true);
+            return false;
+            };
+
+        static auto return_success = [](ChatHandler* chandler, Variant<std::string, uint32> name_or_count) -> bool {
+            if (name_or_count.holds_alternative<uint32>())
+                chandler->PSendSysMessage("Successfully re-bound %u bot(s)", name_or_count.get<uint32>());
+            else
+                chandler->PSendSysMessage("Successfully re-bound %s", name_or_count.get<std::string>().c_str());
+            return true;
+            };
+
+        Player const* owner = handler->GetSession()->GetPlayer();
+
+        if (!owner->HaveBot() && BotDataMgr::GetOwnedBotsCount(owner->GetGUID()) == 0)
+            return return_syntax(handler);
+
+        // Iterate over all bots and check if they can use the gear
+        BotMap const* map = owner->GetBotMgr()->GetBotMap();
+        uint32 count = 0;
+        for (BotMap::const_iterator itr = map->begin(); itr != map->end(); ++itr)
+        {
+            Creature* bot = itr->second;
+            if (bot && bot->IsNPCBot() && !bot->IsTempBot() && bot->GetBotAI()->HasBotCommandState(BOT_COMMAND_UNBIND) && BotDataMgr::SelectNpcBotData(bot->GetEntry())->owner == owner->GetGUID().GetCounter())
+            {
+                if (owner->GetBotMgr()->RebindBot(const_cast<Creature*>(bot)) != BOT_ADD_SUCCESS)
+                {
+                    handler->PSendSysMessage("Failed to re-bind %s for some reason!", bot->GetName());
+                    handler->SetSentErrorMessage(true);
+                    continue;
+                }
+                ++count;
+            }
+        }
+
+        if (count == 0)
+        {
+            handler->PSendSysMessage("Unable to re-bind any bots!");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        return return_success(handler, { count });
+    }
+
     static bool HandleNpcBotCommandUnBindCommand(ChatHandler* handler, Optional<std::vector<std::string>> names)
     {
         static auto return_syntax = [](ChatHandler* chandler) -> bool {
@@ -4162,6 +4214,51 @@ public:
         if (count == 0)
         {
             handler->PSendSysMessage("Unable to unbind any of %u bots!", uint32(names->size()));
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        return return_success(handler, { count });
+    }
+
+    static bool HandleNpcBotCommandUnBindAllCommand(ChatHandler* handler)
+    {
+        static auto return_syntax = [](ChatHandler* chandler) -> bool {
+            chandler->SendSysMessage(".npcbot command unbindall");
+            chandler->SendSysMessage("Frees all owned npcbot(s) temporarily. The bot will return to home location and wait until re-bound");
+            chandler->SetSentErrorMessage(true);
+            return false;
+            };
+
+        static auto return_success = [](ChatHandler* chandler, Variant<std::string, uint32> name_or_count) -> bool {
+            if (name_or_count.holds_alternative<uint32>())
+                chandler->PSendSysMessage("Successfully unbound %u bot(s)", name_or_count.get<uint32>());
+            else
+                chandler->PSendSysMessage("Successfully unbound %s", name_or_count.get<std::string>().c_str());
+            return true;
+            };
+
+        Player const* owner = handler->GetSession()->GetPlayer();
+
+        if (!owner->HaveBot())
+            return return_syntax(handler);
+
+        // Iterate over all bots and check if they can use the gear
+        BotMap const* map = owner->GetBotMgr()->GetBotMap();
+        uint32 count = 0;
+        for (BotMap::const_iterator itr = map->begin(); itr != map->end(); ++itr)
+        {
+            Creature* bot = itr->second;
+            if (bot && !bot->GetBotAI()->HasBotCommandState(BOT_COMMAND_UNBIND))
+            {
+                ++count;
+                owner->GetBotMgr()->UnbindBot(bot->GetGUID());
+            }
+        }
+
+        if (count == 0)
+        {
+            handler->PSendSysMessage("Unable to unbind any owned bots!");
             handler->SetSentErrorMessage(true);
             return false;
         }
