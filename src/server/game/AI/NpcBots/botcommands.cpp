@@ -565,10 +565,10 @@ public:
             { "follow",     npcbotCommandFollowCommandTable                                                                         },
             { "walk",       HandleNpcBotCommandWalkCommand,         rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
             { "nogossip",   HandleNpcBotCommandNoGossipCommand,     rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
-            { "unbind",     HandleNpcBotCommandUnBindCommand,       rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
             { "unbindall",  HandleNpcBotCommandUnBindAllCommand,    rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
-            { "rebind",     HandleNpcBotCommandReBindCommand,       rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
+            { "unbind",     HandleNpcBotCommandUnBindCommand,       rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
             { "rebindall",  HandleNpcBotCommandReBindAllCommand,    rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
+            { "rebind",     HandleNpcBotCommandReBindCommand,       rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
             { "nocast",     HandleNpcBotCommandNoCastCommand,       rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
             { "nolongcast", HandleNpcBotCommandNoLongCastCommand,   rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  },
         };
@@ -4140,7 +4140,7 @@ public:
         for (BotMap::const_iterator itr = map->begin(); itr != map->end(); ++itr)
         {
             Creature* bot = itr->second;
-            if (bot && bot->IsNPCBot() && !bot->IsTempBot() && bot->GetBotAI()->HasBotCommandState(BOT_COMMAND_UNBIND) && BotDataMgr::SelectNpcBotData(bot->GetEntry())->owner == owner->GetGUID().GetCounter())
+            if (bot && bot->GetBotAI()->HasBotCommandState(BOT_COMMAND_UNBIND))
             {
                 if (owner->GetBotMgr()->RebindBot(const_cast<Creature*>(bot)) != BOT_ADD_SUCCESS)
                 {
