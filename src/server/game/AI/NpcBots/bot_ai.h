@@ -261,9 +261,10 @@ class bot_ai : public CreatureAI
         uint32 GetEquipDisplayId(uint8 slot) const;
         bool UnEquipAll(ObjectGuid receiver);
         bool HasRealEquipment() const;
+        int ItemsInSet(ItemTemplate const* newProto) const;
         float GetAverageItemLevel() const;
         std::pair<float, float> GetBotGearScores() const;
-
+        
         void CastBotItemCombatSpell(DamageInfo const& damageInfo);
         void CastBotItemCombatSpell(DamageInfo const& damageInfo, Item* item, ItemTemplate const* proto);
         void OnBotSpellStart(SpellInfo const* spellInfo);
