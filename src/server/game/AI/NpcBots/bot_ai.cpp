@@ -12282,6 +12282,11 @@ bool bot_ai::_unequip(uint8 slot, ObjectGuid receiver)
     return true;
 }
 
+bool bot_ai::Equip(uint8 slot, Item* newItem, ObjectGuid receiver)
+{
+    return _equip(slot, newItem, receiver);
+}
+
 bool bot_ai::_equip(uint8 slot, Item* newItem, ObjectGuid receiver)
 {
     ASSERT(newItem);

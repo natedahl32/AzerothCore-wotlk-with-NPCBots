@@ -679,6 +679,7 @@ public:
             { "vehicle",    npcbotVehicleCommandTable                                                                               },
             { "dump",       npcbotDumpCommandTable                                                                                  },
             { "wp",         npcbotWPCommandTable                                                                                    },
+            { "equip",      HandleNpcBotEquipItemCommand,           rbac::RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC,       Console::No  }
         };
 
         static ChatCommandTable commandTable =
@@ -1700,6 +1701,143 @@ public:
         }
 
         return true;
+    }
+
+    static bool HandleNpcBotEquipItemCommand(ChatHandler* handler, Optional<Variant<ItemTemplate const*, std::vector<std::string>>> item_name_parts_or_template)
+    {
+        Unit const* target = handler->getSelectedUnit();
+        if (!target)
+        {
+            handler->SendSysMessage("No target selected");
+            return true;
+        }
+
+        Player* player = handler->GetSession()->GetPlayer();
+        Group const* gr = player->GetGroup();
+
+        if (!item_name_parts_or_template)
+        {
+            handler->SendSysMessage(".npcbot equip [#item_name]");
+            handler->SendSysMessage("Tells the bot to equip the linked item from your bags");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        // Get the item, either from the item link or by name
+        Item* item = nullptr;
+        if (item_name_parts_or_template->holds_alternative<ItemTemplate const*>())
+            item = player->GetItemByEntry(item_name_parts_or_template->get<ItemTemplate const*>()->ItemId);
+        else
+        {
+            auto const& vec = item_name_parts_or_template->get<std::vector<std::string>>();
+            std::string itemname = vec[0];
+            for (std::size_t i = 1; i < vec.size(); ++i)
+                itemname += ' ' + vec[i];
+
+            if (itemname.size() >= 2 && itemname[0] == '[' && itemname[itemname.size() - 1] == ']')
+                itemname = itemname.substr(1, itemname.size() - 2);
+
+            LocaleConstant locale = handler->GetSession()->GetSessionDbcLocale();
+
+            // find the item
+            for (uint8 i = EQUIPMENT_SLOT_START; i < INVENTORY_SLOT_ITEM_END && !item; ++i)
+            {
+                Item* pItem = player->GetItemByPos(INVENTORY_SLOT_BAG_0, i);
+                if (!pItem || pItem->IsInTrade())
+                    continue;
+
+                ItemTemplate const* pItemTemplate = pItem->GetTemplate();
+                std::string pItemName = pItemTemplate->Name1;
+                if (ItemLocale const* il = sObjectMgr->GetItemLocale(pItemTemplate->ItemId))
+                    ObjectMgr::GetLocaleString(il->Name, locale, pItemName);
+                if (pItemName == itemname)
+                    item = pItem;
+            }
+            for (uint8 i = INVENTORY_SLOT_BAG_START; i < INVENTORY_SLOT_BAG_END && !item; ++i)
+            {
+                if (Bag* pBag = player->GetBagByPos(i))
+                {
+                    for (uint32 j = 0; j < pBag->GetBagSize() && !item; ++j)
+                    {
+                        Item* pItem = player->GetItemByPos(i, j);
+                        if (!pItem || pItem->IsInTrade())
+                            continue;
+
+                        ItemTemplate const* pItemTemplate = pItem->GetTemplate();
+                        std::string pItemName = pItemTemplate->Name1;
+                        if (ItemLocale const* il = sObjectMgr->GetItemLocale(pItemTemplate->ItemId))
+                            ObjectMgr::GetLocaleString(il->Name, locale, pItemName);
+                        if (pItemName == itemname)
+                            item = pItem;
+                    }
+                }
+            }
+        }
+
+        if (!item)
+        {
+            handler->SendSysMessage(LANG_COMMAND_NOITEMFOUND);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        ItemTemplate const* itemtemplate = item->GetTemplate();
+        std::ostringstream msg;
+        bot_ai* botAI = target->ToCreature()->GetBotAI();
+        uint8 slotToEquip;
+        float bestGs = 0;
+
+        // Find the slot to equip the item too (largest GS increase)
+        for (uint8 i = BOT_SLOT_MAINHAND; i != BOT_INVENTORY_SIZE; ++i)
+            if (botAI->CanEquip(item->GetTemplate(), i, true, item))
+            {
+                float gs = botAI->CalculateGearScoreForItem(i, itemtemplate);
+
+                // Get currently equipped item (if any)
+                if (Item const* currItem = botAI->GetEquips(i))
+                {
+                    // We have a currently equipped item
+
+                    // If the item we are looking at is a two handed weapon, we need to get the GS for both our MH and OH to check against
+                    if (itemtemplate->Class == ITEM_CLASS_WEAPON && itemtemplate->InventoryType == INVTYPE_2HWEAPON)
+                    {
+                        Item const* ohItem = botAI->GetEquips(i + 1);
+                        float mhGs = botAI->CalculateGearScoreForItem(i, currItem->GetTemplate());
+                        float ohGs = ohItem ? botAI->CalculateGearScoreForItem(i + 1, currItem->GetTemplate()) : 0;
+                        if (gs > (mhGs + ohGs) && gs > bestGs)
+                        {
+                            slotToEquip = i;
+                            bestGs = gs - (mhGs + ohGs);
+                        }
+                    }
+                    else
+                    {
+                        float currGs = botAI->CalculateGearScoreForItem(i, currItem->GetTemplate());
+                        if (gs > currGs)
+                        {
+                            slotToEquip = i;
+                            bestGs = gs - currGs;
+                        }
+                    }
+                }
+                else
+                {
+                    slotToEquip = i;
+                    bestGs = gs;
+                }
+            }
+
+        // Equip the item
+        if (botAI->Equip(slotToEquip, item, player->GetGUID()))
+        {
+            msg << "Item equipped!";
+            botAI->BotWhisper(msg.str(), player);
+            return true;
+        }
+
+        msg << "Not able to equip item!";
+        botAI->BotWhisper(msg.str(), player);
+        return false;
     }
 
     static bool HandleNpcBotDebugMountCommand(ChatHandler* handler, Optional<uint32> mountId)
