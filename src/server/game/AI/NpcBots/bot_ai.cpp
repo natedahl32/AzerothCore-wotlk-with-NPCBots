@@ -13789,6 +13789,26 @@ bool bot_ai::HasRealEquipment() const
     return false;
 }
 
+int bot_ai::ItemsInSet(ItemTemplate const* newProto) const
+{
+    EquipmentInfo const* einfo = BotDataMgr::GetBotEquipmentInfo(me->GetEntry());
+    ASSERT(einfo, "Trying to call HasRealEquipment for bot with no equip info!");
+    if (newProto->ItemSet == 0)
+        return 0;
+
+    int count = 0;
+    for (uint8 i = BOT_SLOT_MAINHAND; i != BOT_INVENTORY_SIZE; ++i)
+    {
+        if (Item const* item = GetEquips(i))
+        {
+            if (item->GetTemplate()->ItemId != newProto->ItemId && item->GetTemplate()->ItemSet == newProto->ItemSet)
+                count++;
+        }
+    }
+
+    return count;
+}
+
 float bot_ai::GetAverageItemLevel() const
 {
     float sum = 0.f;

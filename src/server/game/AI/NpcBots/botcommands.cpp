@@ -1638,6 +1638,11 @@ public:
             if (!bot || !gr->IsMember(itr->second->GetGUID()))
                 continue;
 
+            // If the item is part of a set, check if we have any exist items equipped as part of the same set but not the same item
+            int setCount = 0;
+            if (itemtemplate->ItemSet)
+                setCount = bot->GetBotAI()->ItemsInSet(itemtemplate);
+
             for (uint8 i = BOT_SLOT_MAINHAND; i != BOT_INVENTORY_SIZE; ++i)
                 if (bot->GetBotAI()->CanEquip(item->GetTemplate(), i, true, item))
                 {
@@ -1648,7 +1653,7 @@ public:
                     if (Item const* currItem = bot->GetBotAI()->GetEquips(i))
                     {
                         // We have a currently equipped item
-
+                        
                         // If the item we are looking at is a two handed weapon, we need to get the GS for both our MH and OH to check against
                         if (itemtemplate->Class == ITEM_CLASS_WEAPON && itemtemplate->InventoryType == INVTYPE_2HWEAPON)
                         {
@@ -1666,6 +1671,8 @@ public:
                                 }
                                 else
                                     bot->GetBotAI()->AddItemLink(player, currItem, msg);
+                                if (setCount > 0)
+                                    msg << " Set Items (" << setCount << ")";
                                 bot->GetBotAI()->BotWhisper(msg.str(), player);
                             }
                         }
@@ -1676,6 +1683,8 @@ public:
                             {
                                 msg << "+" << (gs - currGs) << " GearScore -> ";
                                 bot->GetBotAI()->AddItemLink(player, currItem, msg);
+                                if (setCount > 0)
+                                    msg << " Set Items (" << setCount << ")";
                                 bot->GetBotAI()->BotWhisper(msg.str(), player);
                             }
                         }
@@ -1683,6 +1692,8 @@ public:
                     else
                     {
                         msg << "+" << gs << " GearScore -> Nothing Equipped!";
+                        if (setCount > 0)
+                            msg << " Set Items (" << setCount << ")";
                         bot->GetBotAI()->BotWhisper(msg.str(), player);
                     }
                 }
